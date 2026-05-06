@@ -7,12 +7,18 @@ st.title("🛠 Swagelok Inspection System")
 @st.cache_data
 def load_data():
     try:
-        # อ่านไฟล์ Master List ของคุณ
+        # อ่านไฟล์ Excel โดยระบุว่าไม่ต้องสนใจชื่อคอลัมน์ในตอนแรกเพื่อเช็คข้อมูล
         df = pd.read_excel("master_parts.xlsx")
-        # ลบช่องว่างที่อาจปนมาในชื่อหัวตารางออกให้หมด
-        df.columns = df.columns.str.strip()
+        
+        # ลบแถวที่เป็นค่าว่าง (ถ้ามี)
+        df = df.dropna(how='all')
+        
+        # ลบช่องว่างส่วนเกินที่หัวตาราง
+        df.columns = [str(c).strip() for c in df.columns]
+        
         return df
     except Exception as e:
+        st.error(f"เกิดข้อผิดพลาดในการอ่านไฟล์: {e}")
         return None
 
 df_master = load_data()
@@ -20,32 +26,33 @@ df_master = load_data()
 if df_master is not None:
     st.header("1. Technical Selection")
     
-    # ตรวจสอบชื่อคอลัมน์ (ใช้คอลัมน์แรกสุดของไฟล์เป็นตัวเลือกหลัก)
-    main_col = df_master.columns[0] 
+    # ดึงรายชื่อคอลัมน์ทั้งหมดที่มีในไฟล์ออกมาดู
+    all_columns = df_master.columns.tolist()
     
-    selected_pn = st.selectbox(f"เลือกรายการจาก {main_col}", df_master[main_col])
+    # สร้าง Dropdown จากคอลัมน์แรก (ซึ่งควรจะเป็น Cylinder P/N)
+    first_col = all_columns[0]
     
-    # ดึงข้อมูลแถวที่เลือก
-    part_info = df_master[df_master[main_col] == selected_pn].iloc[0]
+    # กรองเอาเฉพาะแถวที่มีข้อมูล (ไม่เอาแถวที่เป็นค่าว่าง)
+    dropdown_list = df_master[first_col].dropna().unique()
     
-    # แสดงข้อมูลอื่น ๆ ที่มีในลิสต์ (เช่น Needle Valve, Visual, Status)
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.info(f"**Cylinder P/N:** {selected_pn}")
-    with c2:
-        # ดึงข้อมูลจากคอลัมน์ Needle Valve... ถ้ามี
-        val = part_info.get('Needle Valve w/t Rupture Disc P/N', 'N/A')
-        st.success(f"**Needle Valve:** {val}")
-    with c3:
-        status = part_info.get('Status', 'N/A')
-        st.warning(f"**Status:** {status}")
+    selected_item = st.selectbox(f"เลือก {first_col}", dropdown_list)
+    
+    # แสดงข้อมูลของแถวที่เลือก
+    if selected_item:
+        item_data = df_master[df_master[first_col] == selected_item].iloc[0]
+        
+        st.subheader("📋 ข้อมูลทางเทคนิคจากลิสต์")
+        # โชว์ข้อมูลทุกอย่างที่มีในแถวนั้นแบบอัตโนมัติ
+        cols = st.columns(3)
+        for i, col_name in enumerate(all_columns[1:10]): # โชว์ 9 คอลัมน์แรก
+            with cols[i % 3]:
+                st.write(f"**{col_name}:** {item_data[col_name]}")
 
     st.divider()
-    st.header("2. Inspection Data Entry")
-    # เพิ่มช่อง Dropdown อื่น ๆ โดยดึงข้อมูลจากลิสต์ใน Excel
-    visual_option = st.selectbox("Visual Check", df_master['Visual'].dropna().unique())
-    level_option = st.selectbox("Level", df_master['Level'].dropna().unique())
-    
+    st.header("2. ข้อมูลอื่นๆ")
+    doc_no = st.text_input("Document No.")
+    customer = st.text_input("Customer Name")
+
 else:
-    st.error("❌ ไม่พบไฟล์ 'master_parts.xlsx' หรือหัวตารางไม่ถูกต้อง")
-    st.info("กรุณาตรวจสอบว่าชื่อไฟล์ใน GitHub สะกดตรงกับในโค้ดนะคะ")
+    st.warning("⚠️ ไม่พบไฟล์ 'master_parts.xlsx' ในระบบ GitHub ของคุณ")
+    st.info("กรุณาตรวจสอบว่าคุณได้ Upload ไฟล์ชื่อนี้ขึ้นไปแล้ว และสะกดตัวเล็กตัวใหญ่ถูกต้องนะคะ")

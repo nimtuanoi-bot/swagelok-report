@@ -7,18 +7,15 @@ st.title("🛠 Swagelok Inspection System")
 @st.cache_data
 def load_data():
     try:
-        # อ่านไฟล์ Excel โดยระบุว่าไม่ต้องสนใจชื่อคอลัมน์ในตอนแรกเพื่อเช็คข้อมูล
-        df = pd.read_excel("master_parts.xlsx")
+        # header=1 หมายถึงให้เริ่มอ่านที่แถวที่ 2 ของ Excel (นับแถวแรกเป็น 0)
+        df = pd.read_excel("master_parts.xlsx", header=1)
         
-        # ลบแถวที่เป็นค่าว่าง (ถ้ามี)
+        # ลบแถวว่างและลบช่องว่างที่หัวตาราง
         df = df.dropna(how='all')
-        
-        # ลบช่องว่างส่วนเกินที่หัวตาราง
         df.columns = [str(c).strip() for c in df.columns]
         
         return df
     except Exception as e:
-        st.error(f"เกิดข้อผิดพลาดในการอ่านไฟล์: {e}")
         return None
 
 df_master = load_data()
